@@ -10,14 +10,6 @@ library(tidyverse)
 library(ggridges)
 library(patchwork)
 
-knitr::opts_chunk$set(
-  fig.width = 6,
-  fig.asp = .6,
-  out.width = "90%"
-)
-
-theme_set(theme_minimal() + theme(legend.position = "bottom"))
-
 options(
   ggplot2.continuous.colour = "viridis",
   ggplot2.continuous.fill = "viridis"
@@ -151,6 +143,7 @@ excellent_df =
 
 excellent_df |>
   ggplot(aes(x = year, y = mean_value, color = state)) +
+  labs(title = "Average `data_value` for `Excellent` response within states over time") +
   geom_line(aes(group = state))
   
 ```
@@ -161,9 +154,18 @@ Make a two-panel plot showing, for the years 2006, and 2010, distribution of `da
 brfss_df |>
   filter(year %in% c(2006, 2010), state == "NY") |>
   select(year, location, response, data_value) |>
-  ggplot(aes(x = response, y = data_value, color = location)) +
-  geom_line(aes(group = location)) +
+  #ggplot(aes(x = response, y = data_value, color = location)) +
+  #geom_line(aes(group = location)) +
+  #facet_grid(. ~ year)
+  ggplot(aes(x = response, y = data_value)) +
+  geom_boxplot() +
+  labs(title = "Distribution of `data_value` for responses among locations in NY State") +
   facet_grid(. ~ year)
 ```
+
+
+## Problem 3
+
+This problem uses accelerometer data collected on 250 participants in the NHANES study.
 
 
