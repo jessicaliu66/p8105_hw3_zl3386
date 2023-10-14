@@ -9,14 +9,6 @@ output: github_document
 library(tidyverse)
 library(ggridges)
 library(patchwork)
-
-options(
-  ggplot2.continuous.colour = "viridis",
-  ggplot2.continuous.fill = "viridis"
-)
-
-scale_colour_discrete = scale_colour_viridis_d
-scale_fill_discrete = scale_fill_viridis_d
 ```
 
 ## Problem 1
@@ -168,4 +160,94 @@ brfss_df |>
 
 This problem uses accelerometer data collected on 250 participants in the NHANES study.
 
+Load, tidy, merge, and otherwise organize the data sets.
+
+Final dataset includes all originally observed variables; exclude participants less than 21 years of age, and those with missing demographic data.
+
+```{r}
+nhanes_covar =
+  read_csv("data/nhanes_covar.csv", skip = 4) |>
+  janitor::clean_names() |>
+  rename(id = seqn) |>
+  mutate(
+    sex = case_match(
+      sex,
+      1 ~ "male",
+      2 ~ "female"
+    ),
+    education = case_match(
+      education,
+      1 ~ "< high school",
+      2 ~ "high school",
+      3 ~ "> high school"
+    )
+  ) |>
+  mutate(education = factor(education, levels = c("< high school", "high school", "> high school"))) |>
+  filter(age >= 21) |>
+  na.omit()
+  
+nhanes_accel =
+  read_csv("data/nhanes_accel.csv") |>
+  janitor::clean_names() |>
+  rename(id = seqn)
+
+nhanes_df =
+  left_join(nhanes_covar, nhanes_accel, join_by(id))
+```
+
+Produce a reader-friendly table for the number of men and women in each education category, and create a visualization of the age distributions for men and women in each education category.
+
+```{r}
+nhanes_df |>
+  group_by(education) |>
+  count(sex) |>
+  knitr::kable()
+
+nhanes_df |>
+  ggplot(aes(x = sex, y = age)) +
+  geom_boxplot() +
+  labs(title = "Age distributions for men and women in each education category") +
+  facet_grid(. ~ education)
+```
+
+* From the table, we can see that the participants' sex ratio are mostly balanced in each education category, although in the high school equivalent education category there are more male participants than female (35:23). The more than high school education category contains most participants (56 male, 59 female).
+
+* From the boxplot, we can see that participants with more than high school education is significantly younger than the other two education categories. In the high school equivalent education category, female participants are younger than than male participants, while in the other two categories the age distributions are similar between sexes.
+
+Using the tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis).
+
+```{r}
+nhanes_df |>
+  mutate(total_act = rowSums(nhanes_df[,6:1445])) |>
+  relocate(id, sex, age, bmi, education, total_act) |>
+  ggplot(aes(x = age, y = total_act, color = sex)) +
+  geom_point() +
+  geom_smooth(aes(group = sex), se = FALSE) +
+  labs(title = "Total activities - Age") +
+  facet_grid(. ~ education)
+```
+
+* In general, the amount of activity over a day goes down with the increase of age, and this trend is most significant in the less than high school education category. In high school equivalent and more than high school education categories, female participants tend to have more activity than male, while in less than high school category the difference is not significant.
+
+Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex.
+
+```{r}
+nhanes_df |>
+  pivot_longer(
+    cols = starts_with("min"),
+    names_to = "time",
+    values_to = "activity"
+  ) |>
+  mutate(time = as.numeric(str_remove(time, "min"))) |>
+  ggplot(aes(x = time, y = activity, color = sex)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(aes(group = sex), se = FALSE, alpha = 1) +
+  labs(
+    title = "24-hour activity time courses for each education level",
+    x = "time (min)"
+    ) +
+  scale_x_continuous(breaks = seq(0, 1440, by = 60)) +
+  facet_grid(education ~ .) +
+  theme(legend.position = "bottom") 
+```
 
